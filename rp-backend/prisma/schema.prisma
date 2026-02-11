@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum VehicleType {
+  BIKE
+  CAR
+}
+
+enum TripStatus {
+  OPEN
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestStatus {
+  REQUESTED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ReportReason {
+  ABUSE
+  NO_SHOW
+  UNSAFE
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  fullName      String
+  phoneNumber   String   @unique
+  password      String
+  email         String?
+  profilePhoto  String?
+  ratingAvg     Float    @default(0)
+  ratingCount   Int      @default(0)
+  isVerified    Boolean  @default(false)
+  isBlocked     Boolean  @default(false)
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vehicles      Vehicle[]
+  trips         Trip[]    @relation("DriverTrips")
+  requests      TripRequest[]
+}
+
+model Vehicle {
+  id          String   @id @default(uuid())
+  userId      String
+  vehicleType VehicleType
+  vehicleName String
+  vehicleNumber String
+  seatCount   Int
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  trips       Trip[]
+}
+
+model Trip {
+  id            String     @id @default(uuid())
+  driverId      String
+  vehicleId     String
+
+  startLat      Float
+  startLng      Float
+  endLat        Float
+  endLng        Float
+  routePolyline String?
+
+  startTime     DateTime
+  totalSeats    Int
+  availableSeats Int
+  estimatedFuelCost Float?
+
+  status        TripStatus @default(OPEN)
+  createdAt     DateTime   @default(now())
+
+  driver        User       @relation("DriverTrips", fields: [driverId], references: [id])
+  vehicle       Vehicle    @relation(fields: [vehicleId], references: [id])
+  requests      TripRequest[]
+}
+
+model TripRequest {
+  id        String        @id @default(uuid())
+  tripId    String
+  riderId   String
+
+  pickupLat Float
+  pickupLng Float
+
+  status    RequestStatus @default(REQUESTED)
+  createdAt DateTime      @default(now())
+
+  trip      Trip          @relation(fields: [tripId], references: [id])
+  rider     User          @relation(fields: [riderId], references: [id])
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  tripId      String
+  fromUserId  String
+  toUserId    String
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id            String       @id @default(uuid())
+  reportedBy    String
+  reportedUser  String
+  tripId        String?
+  reason        ReportReason
+  description   String?
+  status        ReportStatus @default(OPEN)
+  createdAt     DateTime     @default(now())
+}
+
